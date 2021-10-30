@@ -1,0 +1,49 @@
+name: $(BuildDefinitionName)_$(SourceBranchName)_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+      - feature/*
+
+pr:
+  branches:
+    include:
+      - master
+
+jobs:
+  - job: BuildAndRunUnitTests
+    displayName: Build and run unit tests
+
+    pool:
+      vmImage: 'ubuntu-18.04'
+
+    steps:
+      - task: Maven@3
+        displayName: Build with Maven
+        inputs:
+          mavenPomFile: 'pom.xml'
+          publishJUnitResults: false
+          jdkVersionOption: '1.8'
+          jdkArchitectureOption: 'x64'
+          sonarQubeRunAnalysis: false
+          sqMavenPluginVersionChoice: 'latest'
+
+      - task: CopyFiles@2
+        displayName: Copy files to artifacts
+        inputs:
+          sourceFolder: '$(Build.SourcesDirectory)/target/azure-functions/ami-media-processor-function-app/'
+          targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+      - task: DeleteFiles@1
+        displayName: Remove local.settings.json from artifacts
+        inputs:
+          sourceFolder: '$(Build.ArtifactStagingDirectory)'
+          contents: 'local.settings.json'
+
+      - task: PublishBuildArtifacts@1
+        displayName: Publish artifacts
+        inputs:
+          pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+          artifactName: 'drop'
