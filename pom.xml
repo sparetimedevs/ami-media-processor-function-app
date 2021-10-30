@@ -25,6 +25,7 @@
         <maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
         <scala.maven.plugin.version>4.5.4</scala.maven.plugin.version>
         <maven.clean.plugin.version>3.1.0</maven.clean.plugin.version>
+        <spotless.maven.plugin.version>2.7.0</spotless.maven.plugin.version>
 
     </properties>
 
@@ -79,6 +80,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
                     <version>${maven.clean.plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.maven.plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -193,6 +199,31 @@
                             <directory>obj</directory>
                         </fileset>
                     </filesets>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <scala>
+                        <includes>
+                            <include>src/main/scala/**/*.scala</include>
+                            <include>src/test/scala/**/*.scala</include>
+                        </includes>
+                        <scalafmt>
+                            <version>2.7.5</version>
+                            <file>${project.basedir}/.scalafmt.conf</file>
+                        </scalafmt>
+                    </scala>
                 </configuration>
             </plugin>
 
