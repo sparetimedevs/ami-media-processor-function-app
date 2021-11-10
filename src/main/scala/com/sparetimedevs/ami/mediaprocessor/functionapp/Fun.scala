@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.sparetimedevs.amp.functionapp
+package com.sparetimedevs.ami.mediaprocessor.functionapp
 
 import com.microsoft.azure.functions.*
 import com.microsoft.azure.functions.annotation.{AuthorizationLevel, FunctionName, HttpTrigger}
