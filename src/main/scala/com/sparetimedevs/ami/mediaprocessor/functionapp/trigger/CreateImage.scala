@@ -16,8 +16,8 @@
 
 package com.sparetimedevs.ami.mediaprocessor.functionapp.trigger
 
-import com.microsoft.azure.functions.HttpStatus
-import com.microsoft.azure.functions.annotation.{AuthorizationLevel, FunctionName, HttpTrigger}
+import com.microsoft.azure.functions.annotation.{AuthorizationLevel, BlobInput, FunctionName, HttpTrigger, StorageAccount}
+import com.microsoft.azure.functions.{ExecutionContext, HttpMethod, HttpRequestMessage, HttpResponseMessage, HttpStatus}
 
 import java.util.Optional
 
@@ -62,5 +62,19 @@ class CreateImage {
       .createResponseBuilder(HttpStatus.ACCEPTED)
       .body("{ \"status\" : \"ACCEPTED\", \"url\": \"http://sparetimedevs.com\" }")
       .build //TODO or not with body but with location header.
+  }
+
+  @FunctionName("getBlobSizeHttp")
+  @StorageAccount("AzureWebJobsStorage")
+  def blobSize(
+      @HttpTrigger(name = "req", methods = Array(HttpMethod.GET), authLevel = AuthorizationLevel.ANONYMOUS)
+      request: HttpRequestMessage[Optional[String]],
+      @BlobInput(name = "file", dataType = "binary", path = "azure-pipelines-deploy/{Query.file}")
+      content: Array[Byte],
+      context: ExecutionContext
+  ): HttpResponseMessage = {
+    // build HTTP response with size of requested blob
+    // Working! with a mismatch does lead to NullPointerException...
+    request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
   }
 }
