@@ -16,9 +16,10 @@
 
 package com.sparetimedevs.ami.mediaprocessor.functionapp.trigger
 
-import com.microsoft.azure.functions.annotation.{AuthorizationLevel, BlobInput, FunctionName, HttpTrigger, StorageAccount}
-import com.microsoft.azure.functions.{ExecutionContext, HttpMethod, HttpRequestMessage, HttpResponseMessage, HttpStatus}
+import com.microsoft.azure.functions.annotation.{AuthorizationLevel, BlobInput, BlobOutput, FunctionName, HttpTrigger, StorageAccount}
+import com.microsoft.azure.functions.{ExecutionContext, HttpMethod, HttpRequestMessage, HttpResponseMessage, HttpStatus, OutputBinding}
 
+import java.nio.charset.StandardCharsets
 import java.util.Optional
 
 class CreateImage {
@@ -73,6 +74,24 @@ class CreateImage {
       content: Array[Byte],
       context: ExecutionContext
   ): HttpResponseMessage = {
+    // build HTTP response with size of requested blob
+    // Working! with a mismatch does lead to NullPointerException...
+    request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
+  }
+
+  @FunctionName("copyBlobHttp")
+  @StorageAccount("AzureWebJobsStorage")
+  def copyBlobHttp(
+      @HttpTrigger(name = "req", methods = Array(HttpMethod.GET), authLevel = AuthorizationLevel.ANONYMOUS)
+      request: HttpRequestMessage[Optional[String]],
+      @BlobInput(name = "file", dataType = "binary", path = "azure-pipelines-deploy/{Query.file}")
+      content: Array[Byte],
+      @BlobOutput(name = "target", dataType = "binary", path = "myblob/{Query.file}-CopyViaHttp")
+      outputItem: OutputBinding[Array[Byte]],
+      context: ExecutionContext
+  ): HttpResponseMessage = {
+    // Save blob to outputItem
+    outputItem.setValue(content)
     // build HTTP response with size of requested blob
     // Working! with a mismatch does lead to NullPointerException...
     request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
