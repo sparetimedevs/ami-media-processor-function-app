@@ -18,11 +18,15 @@ package com.sparetimedevs.ami.mediaprocessor.functionapp.trigger
 
 import com.microsoft.azure.functions.annotation.{AuthorizationLevel, BlobInput, BlobOutput, FunctionName, HttpTrigger, StorageAccount}
 import com.microsoft.azure.functions.{ExecutionContext, HttpMethod, HttpRequestMessage, HttpResponseMessage, HttpStatus, OutputBinding}
+import com.sparetimedevs.ami.mediaprocessor.functionapp.DependencyModuleImpl
+import com.sparetimedevs.ami.mediaprocessor.functionapp.test.{AppError, MediaProcessor, ValidationError, XmlParseError}
 
 import java.nio.charset.StandardCharsets
 import java.util.Optional
 
-class CreateImage {
+class CreateImage(private val mediaProcessor: MediaProcessor) {
+
+  def this() = this(DependencyModuleImpl.mediaProcessor)
 
   /** This function listens at endpoint "/api/create-image"
     */
@@ -62,7 +66,7 @@ class CreateImage {
     request
       .createResponseBuilder(HttpStatus.ACCEPTED)
       .body("{ \"status\" : \"ACCEPTED\", \"url\": \"http://sparetimedevs.com\" }")
-      .build //TODO or not with body but with location header.
+      .build // TODO or not with body but with location header.
   }
 
   @FunctionName("getBlobSizeHttp")
@@ -86,14 +90,27 @@ class CreateImage {
       request: HttpRequestMessage[Optional[String]],
       @BlobInput(name = "file", dataType = "binary", path = "azure-pipelines-deploy/{Query.file}")
       content: Array[Byte],
-      @BlobOutput(name = "target", dataType = "binary", path = "myblob/{Query.file}-CopyViaHttp")
+      @BlobOutput(name = "target", dataType = "binary", path = "generated/graphicnotation/{Query.file}.png")
       outputItem: OutputBinding[Array[Byte]],
       context: ExecutionContext
   ): HttpResponseMessage = {
-    // Save blob to outputItem
-    outputItem.setValue(content)
-    // build HTTP response with size of requested blob
-    // Working! with a mismatch does lead to NullPointerException...
-    request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
+    val piccas: Either[AppError, Map[String, Array[Byte]]] = mediaProcessor.createImages(content)
+    piccas.map { aMap =>
+      val firstPicca: Array[Byte] = aMap.map { (a, b) => b }.toList.head
+      // Save blob to outputItem
+      outputItem.setValue(firstPicca)
+    } match {
+      case Left(error) =>
+        error match {
+          case validationError: ValidationError =>
+            request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(validationError.message).build
+          case xmlParseError: XmlParseError =>
+            request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(xmlParseError.message).build
+        }
+      case Right(value) =>
+        // build HTTP response with size of requested blob
+        // Working! with a mismatch does lead to NullPointerException...
+        request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
+    }
   }
 }
