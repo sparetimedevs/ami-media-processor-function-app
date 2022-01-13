@@ -16,9 +16,14 @@
 
 package com.sparetimedevs.ami.mediaprocessor.functionapp.test
 
+import cats.effect.IO
+import com.sparetimedevs.ami.MediaProcessor
+import com.sparetimedevs.ami.mediaprocessor.Errors
+import com.sparetimedevs.ami.mediaprocessor.file.Format
+
 class MediaProcessorTestImpl extends MediaProcessor {
 
-  override def createImages(musicXmlData: Array[Byte]): Either[AppError, Map[String, Array[Byte]]] =
-    Right(Map(("part-p1", testImageData)))
+  override def createImages(musicXmlData: Array[Byte], outputFileFormat: Format): IO[Either[Errors, Map[String, Array[Byte]]]] =
+    IO.pure(Right(Map(("part-p1", testImageData))))
 
 }

@@ -16,7 +16,8 @@
 
 package com.sparetimedevs.ami.mediaprocessor.functionapp
 
-import com.sparetimedevs.ami.mediaprocessor.functionapp.test.{MediaProcessor, MediaProcessorTestImpl}
+import com.sparetimedevs.ami.MediaProcessor
+import com.sparetimedevs.ami.mediaprocessor.functionapp.test.MediaProcessorTestImpl
 
 trait DependencyModule {
   lazy val mediaProcessor: MediaProcessor

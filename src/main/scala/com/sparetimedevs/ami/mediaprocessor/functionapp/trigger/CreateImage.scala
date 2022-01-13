@@ -16,10 +16,14 @@
 
 package com.sparetimedevs.ami.mediaprocessor.functionapp.trigger
 
+import cats.effect.IO
+import cats.effect.unsafe.IORuntime
 import com.microsoft.azure.functions.annotation.{AuthorizationLevel, BlobInput, BlobOutput, FunctionName, HttpTrigger, StorageAccount}
 import com.microsoft.azure.functions.{ExecutionContext, HttpMethod, HttpRequestMessage, HttpResponseMessage, HttpStatus, OutputBinding}
+import com.sparetimedevs.ami.MediaProcessor
+import com.sparetimedevs.ami.mediaprocessor.file.Format
 import com.sparetimedevs.ami.mediaprocessor.functionapp.DependencyModuleImpl
-import com.sparetimedevs.ami.mediaprocessor.functionapp.test.{AppError, MediaProcessor, ValidationError, XmlParseError}
+import com.sparetimedevs.ami.mediaprocessor.{Errors, ValidationError, XmlParseError}
 
 import java.nio.charset.StandardCharsets
 import java.util.Optional
@@ -94,23 +98,68 @@ class CreateImage(private val mediaProcessor: MediaProcessor) {
       outputItem: OutputBinding[Array[Byte]],
       context: ExecutionContext
   ): HttpResponseMessage = {
-    val piccas: Either[AppError, Map[String, Array[Byte]]] = mediaProcessor.createImages(content)
-    piccas.map { aMap =>
-      val firstPicca: Array[Byte] = aMap.map { (a, b) => b }.toList.head
-      // Save blob to outputItem
-      outputItem.setValue(firstPicca)
-    } match {
-      case Left(error) =>
-        error match {
-          case validationError: ValidationError =>
-            request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(validationError.message).build
-          case xmlParseError: XmlParseError =>
-            request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(xmlParseError.message).build
+    given runtime: IORuntime = cats.effect.unsafe.IORuntime.global
+    mediaProcessor
+      .createImages(content, Format.Png)
+      .map { (piccas: Either[Errors, Map[String, Array[Byte]]]) =>
+        piccas.map { aMap =>
+          val firstPicca: Array[Byte] = aMap.map { (a, b) => b }.toList.head
+          // Save blob to outputItem
+          outputItem.setValue(firstPicca)
+        } match {
+          case Left(errors: Errors) =>
+            // TODO, this should be more sophisticated
+            errors.head match {
+              case validationError: ValidationError =>
+                request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(validationError.message).build
+              case xmlParseError: XmlParseError =>
+                request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(xmlParseError.message).build
+            }
+          case Right(value) =>
+            // build HTTP response with size of requested blob
+            // Working! with a mismatch does lead to NullPointerException...
+            request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
         }
-      case Right(value) =>
-        // build HTTP response with size of requested blob
-        // Working! with a mismatch does lead to NullPointerException...
-        request.createResponseBuilder(HttpStatus.OK).body("The size of \"" + request.getQueryParameters.get("file") + "\" is: " + content.length + " bytes").build
-    }
+      }
+      .unsafeRunSync()
+  }
+
+  /** This function listens at endpoint "/api/create-image-sync"
+    */
+  @FunctionName("create-image-sync")
+  def createImageSync(
+      @HttpTrigger(
+        name = "createImageSyncTrigger",
+        methods = Array(HttpMethod.PUT),
+        authLevel = AuthorizationLevel.ANONYMOUS
+      )
+      request: HttpRequestMessage[Optional[String]],
+      context: ExecutionContext
+  ): HttpResponseMessage = {
+    given runtime: IORuntime = cats.effect.unsafe.IORuntime.global
+
+    val musicXmlData: Array[Byte] = request.getBody.get().getBytes
+    mediaProcessor
+      .createImages(musicXmlData, Format.Png)
+      .map { (piccas: Either[Errors, Map[String, Array[Byte]]]) =>
+        piccas.map { aMap =>
+          val firstPicca: Array[Byte] = aMap.map { (a, b) => b }.toList.head
+          firstPicca
+        } match {
+          case Left(errors: Errors) =>
+            // TODO, this should be more sophisticated
+            errors.head match {
+              case validationError: ValidationError =>
+                request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(validationError.message).build
+              case xmlParseError: XmlParseError =>
+                request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(xmlParseError.message).build
+            }
+          case Right(value) =>
+            // build HTTP response with size of requested blob
+            // Working! with a mismatch does lead to NullPointerException...
+            request.createResponseBuilder(HttpStatus.OK).body(value).build
+        }
+      }
+      .unsafeRunSync()
   }
 }
