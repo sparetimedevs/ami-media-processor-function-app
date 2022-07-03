@@ -20,8 +20,9 @@
         <functionResourceGroup>ami-media-processor-rg</functionResourceGroup>
         <stagingDirectory>${project.build.directory}/azure-functions/${functionAppName}</stagingDirectory>
 
-        <functions.version>1.4.2</functions.version>
-        <functions.plugin.version>1.15.0</functions.plugin.version>
+        <azure.functions.maven.plugin.version>1.18.0</azure.functions.maven.plugin.version>
+        <azure.functions.java.library.version>2.0.1</azure.functions.java.library.version>
+        <durabletask.azure.functions>1.0.0-beta.1</durabletask.azure.functions>
 
         <maven.resources.plugin.version>3.1.0</maven.resources.plugin.version>
         <maven.dependency.plugin.version>3.1.1</maven.dependency.plugin.version>
@@ -46,7 +47,12 @@
         <dependency>
             <groupId>com.microsoft.azure.functions</groupId>
             <artifactId>azure-functions-java-library</artifactId>
-            <version>${functions.version}</version>
+            <version>${azure.functions.java.library.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft</groupId>
+            <artifactId>durabletask-azure-functions</artifactId>
+            <version>${durabletask.azure.functions}</version>
         </dependency>
 
         <!-- Ami Media Processor Library -->
@@ -82,7 +88,7 @@
                 <plugin>
                     <groupId>com.microsoft.azure</groupId>
                     <artifactId>azure-functions-maven-plugin</artifactId>
-                    <version>${functions.plugin.version}</version>
+                    <version>${azure.functions.maven.plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
